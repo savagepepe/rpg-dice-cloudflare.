@@ -46,7 +46,7 @@ export class ChatDeck extends DurableObject {
       }
       if (result.initiativeButtons) {
         const initiativeId = String(payload.updateId);
-        const session = {lines:result.text.split('\\n').slice(1),revealed:[]};
+        const session = {lines:result.text.split('\n').slice(1),revealed:[]};
         await this.ctx.storage.put('initiative:' + initiativeId, session);
         result.text = renderInitiative(session);
         result.reply_markup = initiativeKeyboard(session, initiativeId);
@@ -59,7 +59,7 @@ export class ChatDeck extends DurableObject {
 }
 
 function renderInitiative(session) {
-  return '🃏 Iniziativa:\\n' + session.lines.map((line,i) => session.revealed[i] ? line : (i+1) + '. 🂠 Carta nascosta').join('\\n');
+  return '🃏 Iniziativa:\n' + session.lines.map((line,i) => session.revealed[i] ? line : (i+1) + '. 🂠 Carta nascosta').join('\n');
 }
 function initiativeKeyboard(session, id) {
   return {inline_keyboard:session.lines.map((line,i) => [{
