@@ -161,7 +161,7 @@ export default {
     }
     if (update.callback_query) {
       const cb=update.callback_query;
-      const match=/^ir:(\\d+):(\\d+)$/.exec(cb.data || '');
+      const match=/^ir:(\d+):(\d+)$/.exec(cb.data || '');
       if (!match || !cb.message?.chat?.id) {
         await telegramApi(env,'answerCallbackQuery',{callback_query_id:cb.id});
         return new Response('OK');
