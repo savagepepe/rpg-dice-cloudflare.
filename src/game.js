@@ -59,7 +59,7 @@ export function drawInitiative(state, names, rng=Math.random) {
 export function commandResponse(text, state, rng=Math.random) {
   const input=(text||'').trim(); const [raw,...args]=input.split(/\s+/);
   const command=(raw||'').split('@')[0].toLowerCase();
-  if(command==='/start'||command==='/aiuto') return {text:'Bot RPG: /d4 /d6 /d8 /d10 /d12 /d20; /dadi 1d20+5 1d6!; /iniziativa Alice Bob; /iniziativa riavvio. I dadi con ! esplodono. Jolly: reset del mazzo.',state};
+  if(command==='/start'||command==='/aiuto'||command==='/help') return {text:'Bot RPG: /d4 /d6 /d8 /d10 /d12 /d20; /dadi 1d20+5 1d6!; /iniziativa Alice Bob; /iniziativa riavvio. I dadi con ! esplodono. Jolly: reset del mazzo.',state};
   if(/^\/d(4|6|8|10|12|20)$/.test(command)) {
     const faces=command.slice(2); const expr=`1d${faces}! 1d6!`;
     return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}\n${expr}`),state};
