@@ -12,6 +12,17 @@ export class ChatDeck extends DurableObject {
     if (payload.kind === 'lookup') {
       return Response.json({userId: await this.ctx.storage.get('user:' + payload.username.toLowerCase()) || null});
     }
+    if (payload.kind === 'reveal') {
+      return this.ctx.blockConcurrencyWhile(async () => {
+        const key = 'initiative:' + payload.initiativeId;
+        const session = await this.ctx.storage.get(key);
+        if (!session || !Number.isInteger(payload.index) || payload.index < 0 || payload.index >= session.lines.length)
+          return Response.json({error:'Iniziativa non disponibile'});
+        session.revealed[payload.index] = true;
+        await this.ctx.storage.put(key, session);
+        return Response.json({text:renderInitiative(session),reply_markup:initiativeKeyboard(session,payload.initiativeId)});
+      });
+    }
     if (payload.kind !== 'command') return new Response('Bad request', { status: 400 });
     return this.ctx.blockConcurrencyWhile(async () => {
       const key = `update:${payload.updateId}`;
@@ -33,14 +44,38 @@ export class ChatDeck extends DurableObject {
         }
         result.text = `Carta inviata privatamente a @${result.recipient}.`;
       }
+      if (result.initiativeButtons) {
+        const initiativeId = String(payload.updateId);
+        const session = {lines:result.text.split('\\n').slice(1),revealed:[]};
+        await this.ctx.storage.put('initiative:' + initiativeId, session);
+        result.text = renderInitiative(session);
+        result.reply_markup = initiativeKeyboard(session, initiativeId);
+      }
       await this.ctx.storage.put('deck', result.state);
       await this.ctx.storage.put(key, true);
-      return Response.json({ text: result.text, spoiler: Boolean(result.spoiler), individualSpoilers: Boolean(result.individualSpoilers) });
+      return Response.json({ text: result.text, spoiler: Boolean(result.spoiler), individualSpoilers: Boolean(result.individualSpoilers), reply_markup: result.reply_markup || null });
     });
   }
 }
 
-async function telegramSend(env, chatId, text, threadId, spoiler=false, individualSpoilers=false) {
+function renderInitiative(session) {
+  return '🃏 Iniziativa:\\n' + session.lines.map((line,i) => session.revealed[i] ? line : (i+1) + '. 🂠 Carta nascosta').join('\\n');
+}
+function initiativeKeyboard(session, id) {
+  return {inline_keyboard:session.lines.map((line,i) => [{
+    text:session.revealed[i] ? '✓ Carta ' + (i+1) + ' rivelata' : '🃏 Scopri carta ' + (i+1),
+    callback_data:'ir:' + id + ':' + i
+  }])};
+}
+async function telegramApi(env, method, payload) {
+  const response=await fetch('https://api.telegram.org/bot' + env.TELEGRAM_BOT_TOKEN + '/' + method,{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
+  });
+  const result=await response.json();
+  if(!response.ok || !result.ok) throw new Error('Telegram ' + method + ' non riuscito');
+  return result;
+}
+async function telegramSend(env, chatId, text, threadId, spoiler=false, individualSpoilers=false, replyMarkup=null) {
   const escapeHtml = value => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const formatted = individualSpoilers
     ? text.split('\n').map((line, i) => {
@@ -52,6 +87,7 @@ async function telegramSend(env, chatId, text, threadId, spoiler=false, individu
   const payload = { chat_id: chatId, text: formatted };
   if (spoiler || individualSpoilers) payload.parse_mode = 'HTML';
   if (threadId !== undefined) payload.message_thread_id = threadId;
+  if (replyMarkup) payload.reply_markup = replyMarkup;
   const response = await fetch(
     `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
     {
@@ -79,7 +115,7 @@ async function setupWebhook(request, env, url) {
       body: JSON.stringify({
         url: `${url.origin}/telegram`,
         secret_token: env.TELEGRAM_WEBHOOK_SECRET,
-        allowed_updates: ['message']
+        allowed_updates: ['message', 'callback_query']
       })
     }
   );
@@ -114,6 +150,25 @@ export default {
       update = await request.json();
     } catch {
       return new Response('Bad JSON', { status: 400 });
+    }
+    if (update.callback_query) {
+      const cb=update.callback_query;
+      const match=/^ir:(\\d+):(\\d+)$/.exec(cb.data || '');
+      if (!match || !cb.message?.chat?.id) {
+        await telegramApi(env,'answerCallbackQuery',{callback_query_id:cb.id});
+        return new Response('OK');
+      }
+      const stub=env.DECKS.get(env.DECKS.idFromName(String(cb.message.chat.id)));
+      const response=await stub.fetch('https://internal/reveal',{method:'POST',body:JSON.stringify({
+        kind:'reveal',initiativeId:match[1],index:Number(match[2])
+      })});
+      const result=await response.json();
+      await telegramApi(env,'answerCallbackQuery',{callback_query_id:cb.id,text:result.error || 'Carta rivelata'});
+      if (!result.error) await telegramApi(env,'editMessageText',{
+        chat_id:cb.message.chat.id,message_id:cb.message.message_id,
+        text:result.text,reply_markup:result.reply_markup
+      });
+      return new Response('OK');
     }
     const message = update.message;
     if (!message?.chat?.id || typeof message.text !== 'string' || !message.text.startsWith('/')) {
@@ -155,7 +210,7 @@ export default {
     if (!response.ok) return new Response('Internal error', { status: 500 });
     const result = await response.json();
     if (result.text) {
-      await telegramSend(env, message.chat.id, result.text, message.message_thread_id, result.spoiler, result.individualSpoilers);
+      await telegramSend(env, message.chat.id, result.text, message.message_thread_id, result.spoiler, result.individualSpoilers, result.reply_markup);
     }
     return new Response('OK');
   }
