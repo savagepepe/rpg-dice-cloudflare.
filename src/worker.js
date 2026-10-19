@@ -45,7 +45,7 @@ async function telegramSend(env, chatId, text, threadId, spoiler=false, individu
   const formatted = individualSpoilers
     ? text.split('\n').map((line, i) => {
         if (i === 0) return escapeHtml(line);
-        const match = /^(\\d+\\.\\s+.+?\\s+[–-]\\s+)(.+)$/.exec(line);
+        const match = /^(\d+\.\s+.+?\s+[–-]\s+)(.+)$/.exec(line);
         return match ? escapeHtml(match[1]) + '<tg-spoiler>' + escapeHtml(match[2]) + '</tg-spoiler>' : escapeHtml(line);
       }).join('\n')
     : spoiler ? '<tg-spoiler>' + escapeHtml(text) + '</tg-spoiler>' : text;
