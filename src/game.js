@@ -64,7 +64,34 @@ export function drawCard(state, rng=Math.random) {
 export function commandResponse(text, state, rng=Math.random) {
   const input=(text||'').trim(); const [raw,...args]=input.split(/\s+/);
   const command=(raw||'').split('@')[0].toLowerCase();
-  if(command==='/start'||command==='/aiuto'||command==='/help') return {text:'Bot RPG: /d4 /d6 /d8 /d10 /d12 /d20; /dadi 1d20+5 1d6!; /iniziativa Alice Bob; /iniziativa riavvio. I dadi con ! esplodono. Jolly: reset del mazzo.',state};
+  if(command==='/start'||command==='/aiuto'||command==='/help') return {text:`🎲 GUIDA BOT RPG
+
+🎲 DADI RAPIDI
+/d4 /d6 /d8 /d10 /d12 /d20
+Ogni comando tira il dado indicato (Dado Tiro) e un d6 (Dado Fortuna). Entrambi sono esplosivi: se esce il valore massimo, il dado viene rilanciato e i risultati si sommano.
+
+🎯 DADI PERSONALIZZATI
+/dadi 1d20+5
+/dadi 2d8!
+/dadi 1d8! 1d6!
+Sintassi: NdF+M oppure NdF-M, dove N è il numero di dadi, F le facce, M il modificatore. Il simbolo ! attiva l'esplosione. Puoi inserire una o due espressioni: la prima è il Dado Tiro, la seconda il Dado Fortuna. Se entrambi mostrano 1 al primo lancio, viene segnalato il fallimento critico.
+
+🃏 PESCA CARTE
+/pesca — pesca una carta e la mostra nel gruppo.
+/pesca* — pesca una carta nascosta da spoiler: toccala per scoprirla.
+/pesca @username — invia una carta in privato all'utente indicato, senza mostrarla nel gruppo. Il destinatario deve prima aprire la chat privata del bot e inviare /start, avendo un username Telegram.
+
+⚔️ INIZIATIVA
+/iniziativa Marco Luca Anna
+Pesca una carta per ogni partecipante e mostra la classifica ordinata per valore.
+/iniziativa* Marco Luca Anna
+Crea un unico messaggio con nomi e carte inizialmente nascosti. Premi «Scopri carta» per rivelare una singola voce; le altre restano nascoste. Le carte rivelate sono visibili a tutti nel gruppo.
+/iniziativa riavvio — azzera manualmente il mazzo del gruppo.
+
+📚 REGOLE DEL MAZZO
+54 carte (52 carte normali + 2 Jolly). Le carte estratte non tornano nel mazzo finché non viene azzerato. Il mazzo si azzera automaticamente quando esce un Jolly o quando non ci sono abbastanza carte per una nuova iniziativa. Ogni chat ha un mazzo indipendente e persistente.
+
+ℹ️ /aiuto e /help mostrano questa guida. In chat privata /start serve anche per registrarsi alla pesca privata.`,state};
   if(/^\/d(4|6|8|10|12|20)$/.test(command)) {
     const faces=command.slice(2); const expr=`1d${faces}! 1d6!`;
     return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}\n${expr}`),state};
