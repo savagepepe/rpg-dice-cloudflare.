@@ -102,7 +102,12 @@ async function telegramSend(env, chatId, text, threadId, spoiler=false, individu
 }
 
 async function setupWebhook(request, env, url) {
-  const suppliedSecret = request.headers.get('X-Setup-Secret');
+  const contentType = request.headers.get('Content-Type') || '';
+  let suppliedSecret = request.headers.get('X-Setup-Secret');
+  if (!suppliedSecret && contentType.includes('application/x-www-form-urlencoded')) {
+    const form = await request.formData();
+    suppliedSecret = form.get('secret');
+  }
   if (!env.TELEGRAM_WEBHOOK_SECRET || suppliedSecret !== env.TELEGRAM_WEBHOOK_SECRET) {
     return new Response('Forbidden', { status: 403 });
   }
@@ -131,6 +136,9 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/health') {
       return new Response('OK');
+    }
+    if (request.method === 'GET' && url.pathname === '/setup-webhook') {
+      return new Response(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Attiva pulsanti Telegram</title></head><body style="font:16px system-ui;max-width:420px;margin:40px auto;padding:16px"><h2>Attiva i pulsanti Telegram</h2><p>Inserisci il segreto TELEGRAM_WEBHOOK_SECRET di Cloudflare. Non inserire il token del bot.</p><form method="POST" action="/setup-webhook" autocomplete="off"><label>Segreto webhook<br><input type="password" name="secret" required autocomplete="off" style="width:100%;padding:12px;box-sizing:border-box;margin:12px 0"></label><button type="submit" style="padding:12px">Attiva pulsanti</button></form></body></html>`, {headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff'}});
     }
     if (request.method === 'POST' && url.pathname === '/setup-webhook') {
       return setupWebhook(request, env, url);
