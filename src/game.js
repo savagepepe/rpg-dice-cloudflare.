@@ -70,6 +70,10 @@ export function commandResponse(text, state, rng=Math.random) {
     return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}\n${expr}`),state};
   }
   if(command==='/dadi') return {text:args.length?formatRoll(rollExpression(args.join(' '),rng),`Tiro: ${args.join(' ')}`):'Uso: /dadi 1d20+5 1d6!',state};
+  if(command==='/pesca' && args.length && /^@[a-zA-Z0-9_]{5,32}$/.test(args[0])) {
+    const result=drawCard(state,rng);
+    return {...result, recipient:args[0].slice(1).toLowerCase()};
+  }
   if(command==='/pesca'||command==='/pesca*') {
     const result=drawCard(state,rng);
     return {...result, spoiler:command.endsWith('*')};
@@ -78,7 +82,7 @@ export function commandResponse(text, state, rng=Math.random) {
     if(!args.length) return {text:'Uso: /iniziativa Alice Bob Carlo; /iniziativa riavvio',state};
     if(args[0].toLowerCase()==='riavvio') return {text:'Iniziativa: mazzo usato azzerato.',state:freshState()};
     const result=drawInitiative(state,args,rng);
-    return {text:`Iniziativa:\n${result.text}`,state:result.state,spoiler:command.endsWith('*')};
+    return {text:`Iniziativa:\n${result.text}`,state:result.state,spoiler:command.endsWith('*'),individualSpoilers:command.endsWith('*')};
   }
   return null;
 }
