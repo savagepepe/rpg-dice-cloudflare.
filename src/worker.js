@@ -18,13 +18,15 @@ export class ChatDeck extends DurableObject {
       if (!result) return Response.json({ ignored: true });
       await this.ctx.storage.put('deck', result.state);
       await this.ctx.storage.put(key, true);
-      return Response.json({ text: result.text });
+      return Response.json({ text: result.text, spoiler: Boolean(result.spoiler) });
     });
   }
 }
 
-async function telegramSend(env, chatId, text, threadId) {
-  const payload = { chat_id: chatId, text };
+async function telegramSend(env, chatId, text, threadId, spoiler=false) {
+  const escapeHtml = value => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const payload = { chat_id: chatId, text: spoiler ? `<tg-spoiler>${escapeHtml(text)}</tg-spoiler>` : text };
+  if (spoiler) payload.parse_mode = 'HTML';
   if (threadId !== undefined) payload.message_thread_id = threadId;
   const response = await fetch(
     `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
@@ -107,7 +109,7 @@ export default {
     if (!response.ok) return new Response('Internal error', { status: 500 });
     const result = await response.json();
     if (result.text) {
-      await telegramSend(env, message.chat.id, result.text, message.message_thread_id);
+      await telegramSend(env, message.chat.id, result.text, message.message_thread_id, result.spoiler);
     }
     return new Response('OK');
   }
