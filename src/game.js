@@ -56,6 +56,11 @@ export function drawInitiative(state, names, rng=Math.random) {
   const rows=names.map((name,i)=>({name,...cards[i]})).sort((a,b)=>rank(b.value)-rank(a.value)||suitRank(b.suit)-suitRank(a.suit));
   return {state:{used:[...used]}, text:rows.map((r,i)=>`${i+1}. ${r.name} – ${r.value} ${r.suit}`).join('\n'),cards};
 }
+export function drawCard(state, rng=Math.random) {
+  const result=drawInitiative(state,['Carta'],rng);
+  const card=result.cards[0];
+  return {state:result.state, text:`Carta pescata: ${card.value} ${card.suit}`};
+}
 export function commandResponse(text, state, rng=Math.random) {
   const input=(text||'').trim(); const [raw,...args]=input.split(/\s+/);
   const command=(raw||'').split('@')[0].toLowerCase();
@@ -65,11 +70,15 @@ export function commandResponse(text, state, rng=Math.random) {
     return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}\n${expr}`),state};
   }
   if(command==='/dadi') return {text:args.length?formatRoll(rollExpression(args.join(' '),rng),`Tiro: ${args.join(' ')}`):'Uso: /dadi 1d20+5 1d6!',state};
-  if(command==='/iniziativa') {
+  if(command==='/pesca'||command==='/pesca*') {
+    const result=drawCard(state,rng);
+    return {...result, spoiler:command.endsWith('*')};
+  }
+  if(command==='/iniziativa'||command==='/iniziativa*') {
     if(!args.length) return {text:'Uso: /iniziativa Alice Bob Carlo; /iniziativa riavvio',state};
     if(args[0].toLowerCase()==='riavvio') return {text:'Iniziativa: mazzo usato azzerato.',state:freshState()};
     const result=drawInitiative(state,args,rng);
-    return {text:`Iniziativa:\n${result.text}`,state:result.state};
+    return {text:`Iniziativa:\n${result.text}`,state:result.state,spoiler:command.endsWith('*')};
   }
   return null;
 }
