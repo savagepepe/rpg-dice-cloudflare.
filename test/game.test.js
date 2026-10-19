@@ -37,3 +37,14 @@ test('iniziativa spoiler usa le stesse regole',()=>{
  assert.equal(hidden.text,regular.text);
  assert.deepEqual(hidden.state,regular.state);
 });
+
+test('pesca destinatario richiede username valido',()=>{
+ const r=commandResponse('/pesca @Giocatore',freshState(),()=>0.5);
+ assert.equal(r.recipient,'giocatore');
+ assert.equal(r.state.used.length,1);
+});
+test('iniziativa con spoiler indipendenti',()=>{
+ const r=commandResponse('/iniziativa* Alice Bob',freshState(),()=>0.5);
+ assert.equal(r.individualSpoilers,true);
+ assert.equal(r.spoiler,true);
+});
