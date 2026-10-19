@@ -82,7 +82,7 @@ export function commandResponse(text, state, rng=Math.random) {
     if(!args.length) return {text:'Uso: /iniziativa Alice Bob Carlo; /iniziativa riavvio',state};
     if(args[0].toLowerCase()==='riavvio') return {text:'Iniziativa: mazzo usato azzerato.',state:freshState()};
     const result=drawInitiative(state,args,rng);
-    return {text:`Iniziativa:\n${result.text}`,state:result.state,spoiler:command.endsWith('*'),individualSpoilers:command.endsWith('*')};
+    return {text:`Iniziativa:\n${result.text}`,state:result.state,spoiler:false,initiativeButtons:command.endsWith('*')};
   }
   return null;
 }
