@@ -59,3 +59,14 @@ test('danno non richiede il punto esclamativo',()=>{
  const result=commandResponse('/danno 2d6+2',freshState(),()=>0);
  assert.match(result.text,/Danno totale: 4/);
 });
+
+test('macro dado mostra etichetta abilità senza cambiare risultati',()=>{
+ const plain=commandResponse('/d6',freshState(),()=>0);
+ const named=commandResponse('/d6 atletica',freshState(),()=>0);
+ assert.match(named.text,/Macro: d6 — atletica/);
+ assert.equal(named.text.replace(' — atletica',''),plain.text);
+});
+test('macro supporta descrizioni con più parole',()=>{
+ const result=commandResponse('/d8 percezione visiva',freshState(),()=>0);
+ assert.match(result.text,/Macro: d8 — percezione visiva/);
+});
