@@ -48,3 +48,14 @@ test('iniziativa con spoiler indipendenti',()=>{
  assert.equal(r.individualSpoilers,true);
  assert.equal(r.spoiler,true);
 });
+
+test('danno somma dadi esplosivi e modificatore',()=>{
+ const seq=[0.75,0.25,0.5];let i=0;
+ const result=commandResponse('/danno 1d4-1+1d6',freshState(),()=>seq[i++]);
+ assert.match(result.text,/Danno totale: 7/);
+ assert.match(result.text,/Esplode!/);
+});
+test('danno non richiede il punto esclamativo',()=>{
+ const result=commandResponse('/danno 2d6+2',freshState(),()=>0);
+ assert.match(result.text,/Danno totale: 4/);
+});
