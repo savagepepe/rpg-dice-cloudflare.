@@ -102,7 +102,7 @@ export function commandResponse(text, state, rng=Math.random) {
 
 🎲 DADI RAPIDI
 /d4 /d6 /d8 /d10 /d12 /d20
-Ogni comando tira il dado indicato (Dado Tiro) e un d6 (Dado Fortuna). Entrambi sono esplosivi: se esce il valore massimo, il dado viene rilanciato e i risultati si sommano.
+Puoi aggiungere il nome dell'abilità, per esempio /d6 atletica o /d8 percezione visiva.\nOgni comando tira il dado indicato (Dado Tiro) e un d6 (Dado Fortuna). Entrambi sono esplosivi: se esce il valore massimo, il dado viene rilanciato e i risultati si sommano.
 
 ⚔️ DANNI SAVAGE WORLDS
 /danno 1d4-1+1d6
@@ -133,7 +133,7 @@ Crea un unico messaggio con nomi e carte inizialmente nascosti. Premi «Scopri c
 ℹ️ /aiuto e /help mostrano questa guida. In chat privata /start serve anche per registrarsi alla pesca privata.`,state};
   if(/^\/d(4|6|8|10|12|20)$/.test(command)) {
     const faces=command.slice(2); const expr=`1d${faces}! 1d6!`;
-    return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}\n${expr}`),state};
+    return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}${args.length?' — '+args.join(' '):''}\n${expr}`),state};
   }
   if(command==='/danno') return {text:rollDamage(args.join(' '),rng),state};
   if(command==='/dadi') return {text:args.length?formatRoll(rollExpression(args.join(' '),rng),`Tiro: ${args.join(' ')}`):'Uso: /dadi 1d20+5 1d6!',state};
