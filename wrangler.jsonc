@@ -3,7 +3,29 @@
   "main": "src/worker.js",
   "compatibility_date": "2026-10-01",
   "durable_objects": {
-    "bindings": [{"name": "DECKS", "class_name": "ChatDeck"}]
+    "bindings": [
+      {
+        "name": "DECKS",
+        "class_name": "ChatDeck"
+      }
+    ]
   },
-  "migrations": [{"tag": "v1", "new_sqlite_classes": ["ChatDeck"]}]
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "ChatDeck"
+      ]
+    }
+  ],
+  "previews": {
+    "durable_objects": {
+      "bindings": [
+        {
+          "name": "DECKS",
+          "class_name": "ChatDeck"
+        }
+      ]
+    }
+  }
 }
