@@ -61,6 +61,40 @@ export function drawCard(state, rng=Math.random) {
   const card=result.cards[0];
   return {state:result.state, text:`Carta pescata: ${card.value} ${card.suit}`};
 }
+export function rollDamage(expression, rng = Math.random) {
+  const input = expression.replace(/\s+/g, '');
+  if (!input) throw Error('Uso: /danno 1d4-1+1d6');
+  const terms = input.match(/[+-]?[^+-]+/g) || [];
+  if (terms.join('') !== input) throw Error('Espressione di danno non valida.');
+  let total = 0, count = 0;
+  const lines = ['⚔️ Danno: ' + input, ''];
+  for (const term of terms) {
+    const sign = term.startsWith('-') ? -1 : 1;
+    const raw = term.replace(/^[+-]/, '');
+    const dice = /^(\d*)d(\d+)!?$/i.exec(raw);
+    if (dice) {
+      const qty = Number(dice[1] || 1), faces = Number(dice[2]);
+      if (!Number.isSafeInteger(qty) || qty < 1 || count + qty > MAX_DICE)
+        throw Error('Quantità totale di dadi non valida (1–100).');
+      count += qty;
+      for (let i = 0; i < qty; i++) {
+        const rolls = rollDie(faces, true, rng);
+        const subtotal = rolls.reduce((a,b) => a+b, 0);
+        total += sign * subtotal;
+        lines.push((sign < 0 ? '−' : '') + 'd' + faces + ': [' + rolls.join(' + ') + '] = ' + (sign * subtotal) + (rolls.length > 1 ? ' 💥 Esplode!' : ''));
+      }
+    } else if (/^\d+$/.test(raw)) {
+      const modifier = Number(raw);
+      if (!Number.isSafeInteger(modifier) || modifier > 1000000) throw Error('Modificatore troppo grande.');
+      total += sign * modifier;
+      lines.push('Modificatore: ' + (sign < 0 ? '−' : '+') + modifier);
+    } else throw Error('Termine non valido: ' + term);
+  }
+  if (!count) throw Error('Inserisci almeno un dado.');
+  lines.push('', '🎯 Danno totale: ' + total);
+  return lines.join('\n');
+}
+
 export function commandResponse(text, state, rng=Math.random) {
   const input=(text||'').trim(); const [raw,...args]=input.split(/\s+/);
   const command=(raw||'').split('@')[0].toLowerCase();
@@ -69,6 +103,11 @@ export function commandResponse(text, state, rng=Math.random) {
 🎲 DADI RAPIDI
 /d4 /d6 /d8 /d10 /d12 /d20
 Ogni comando tira il dado indicato (Dado Tiro) e un d6 (Dado Fortuna). Entrambi sono esplosivi: se esce il valore massimo, il dado viene rilanciato e i risultati si sommano.
+
+⚔️ DANNI SAVAGE WORLDS
+/danno 1d4-1+1d6
+/danno 2d6+2
+Tutti i dadi del danno esplodono automaticamente e si sommano, senza Dado Fortuna. Il simbolo ! è facoltativo.
 
 🎯 DADI PERSONALIZZATI
 /dadi 1d20+5
@@ -96,6 +135,7 @@ Crea un unico messaggio con nomi e carte inizialmente nascosti. Premi «Scopri c
     const faces=command.slice(2); const expr=`1d${faces}! 1d6!`;
     return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}\n${expr}`),state};
   }
+  if(command==='/danno') return {text:rollDamage(args.join(' '),rng),state};
   if(command==='/dadi') return {text:args.length?formatRoll(rollExpression(args.join(' '),rng),`Tiro: ${args.join(' ')}`):'Uso: /dadi 1d20+5 1d6!',state};
   if(command==='/pesca' && args.length && /^@[a-zA-Z0-9_]{5,32}$/.test(args[0])) {
     const result=drawCard(state,rng);
