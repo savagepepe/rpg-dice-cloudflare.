@@ -88,6 +88,38 @@ async function execute(job) {
           } else checks.configuration = { httpStatus: res.status };
         } catch (e) { checks.configuration = { error: e.message.slice(0, 100) }; }
       }
+      if (p.backup === true) {
+        const h = await stHeaders();
+        const res = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}' });
+        if (!res.ok) throw new Error('Backup settings HTTP ' + res.status);
+        const settingsData = await res.json();
+        const backupDir = new URL('../backups/', import.meta.url);
+        fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+        const fileName = 'settings-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+        fs.writeFileSync(new URL(fileName, backupDir), JSON.stringify(settingsData), { mode: 0o600, flag: 'wx' });
+        checks.backup = { created: true, file: fileName, location: 'local-only', bytes: Buffer.byteLength(JSON.stringify(settingsData)) };
+      }
+      if (p.model === true) {
+        try {
+          const h = await stHeaders();
+          const res = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}' });
+          if (res.ok) {
+            const data = await res.json();
+            const s = typeof data.settings === 'string' ? JSON.parse(data.settings) : data.settings;
+            const o = typeof data.openai_settings === 'string' ? JSON.parse(data.openai_settings) : data.openai_settings;
+            const modelFields = {};
+            for (const [name, obj] of [['settings',s],['openai',o]]) {
+              if (obj && typeof obj === 'object') {
+                for (const key of ['chat_completion_source','openai_model','claude_model','google_model','openrouter_model','custom_model','max_context','amount_gen']) {
+                  const v = obj[key];
+                  if (typeof v === 'string' && v.length <= 100 || typeof v === 'number') modelFields[name + '.' + key] = v;
+                }
+              }
+            }
+            checks.model = modelFields;
+          } else checks.model = { httpStatus: res.status };
+        } catch (e) { checks.model = { error: e.message.slice(0,100) }; }
+      }
       return { sillyTavernOnline: r.ok, httpStatus: r.status, diagnostics: checks };
     }
     case 'create_character': {
@@ -116,7 +148,7 @@ async function execute(job) {
     default: throw new Error('Operazione non autorizzata');
   }
 }
-console.log('RPG Manager avviato (diagnostica sicura, personaggi, Lorebook)');
+console.log('RPG Manager avviato (diagnostica, backup locale, personaggi, Lorebook)');
 while (true) {
   try {
     const job = await cloud('/agent/claim', {});
