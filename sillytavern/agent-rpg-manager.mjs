@@ -88,6 +88,30 @@ async function execute(job) {
           } else checks.configuration = { httpStatus: res.status };
         } catch (e) { checks.configuration = { error: e.message.slice(0, 100) }; }
       }
+      if (p.discoverModel === true) {
+        try {
+          const h = await stHeaders();
+          const res = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const d = await res.json();
+          const s = typeof d.settings === 'string' ? JSON.parse(d.settings) : d.settings;
+          const o = typeof d.openai_settings === 'string' ? JSON.parse(d.openai_settings) : d.openai_settings;
+          const safeModel = {};
+          const inspect = (obj, prefix) => {
+            if (!obj || typeof obj !== 'object') return;
+            for (const [key, value] of Object.entries(obj)) {
+              if (!/^(main_api|chat_completion_source|openai_model|claude_model|google_model|openrouter_model|custom_model|model|model_name|api_type|preset_settings_openai|preset_settings|temperature|top_p|max_context|amount_gen)$/i.test(key)) continue;
+              if ((typeof value === 'string' && value.length <= 100) || typeof value === 'number' || typeof value === 'boolean') safeModel[prefix + key] = value;
+            }
+          };
+          inspect(s, 'settings.');
+          inspect(o, 'openai.');
+          if (s && typeof s === 'object') {
+            for (const key of ['oai_settings','openai_settings','chat_completion_settings']) inspect(s[key], 'settings.' + key + '.');
+          }
+          checks.modelDiscovery = safeModel;
+        } catch (e) { checks.modelDiscovery = { error: e.message.slice(0,100) }; }
+      }
       if (p.backup === true) {
         const h = await stHeaders();
         const res = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}' });
@@ -148,7 +172,7 @@ async function execute(job) {
     default: throw new Error('Operazione non autorizzata');
   }
 }
-console.log('RPG Manager avviato (diagnostica, backup locale, personaggi, Lorebook)');
+console.log('RPG Manager avviato (diagnostica avanzata, backup locale, personaggi, Lorebook)');
 while (true) {
   try {
     const job = await cloud('/agent/claim', {});
