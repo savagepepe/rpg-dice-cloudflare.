@@ -130,6 +130,36 @@ async function execute(job) {
           if (!verified) throw new Error('Impostazioni salvate ma verifica non riuscita');
         }
       }
+      if (p.configureOpenRouter === true) {
+        const h = await stHeaders();
+        const res = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}' });
+        if (!res.ok) throw new Error('Lettura impostazioni HTTP ' + res.status);
+        const responseData = await res.json();
+        const original = typeof responseData.settings === 'string' ? JSON.parse(responseData.settings) : responseData.settings;
+        if (!original || typeof original !== 'object' || !original.oai_settings || typeof original.oai_settings !== 'object') throw new Error('Configurazione OpenRouter assente');
+        const old = original.oai_settings;
+        const before = { main_api: original.main_api, chat_completion_source: old.chat_completion_source, openrouter_model: old.openrouter_model };
+        const proposed = { main_api: 'openai', chat_completion_source: 'openrouter', openrouter_model: 'openrouter/free' };
+        if (p.dryRun !== false) {
+          checks.openRouterPlan = { before, proposed, applied: false };
+        } else {
+          const backupDir = new URL('../backups/', import.meta.url);
+          fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+          const fileName = 'before-openrouter-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+          fs.writeFileSync(new URL(fileName, backupDir), JSON.stringify(original), { mode: 0o600, flag: 'wx' });
+          const updated = { ...original, main_api: 'openai', oai_settings: { ...old, chat_completion_source: 'openrouter', openrouter_model: 'openrouter/free' } };
+          const save = await fetch(local + '/api/settings/save', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify(updated) });
+          if (!save.ok) throw new Error('Salvataggio HTTP ' + save.status);
+          const vh = await stHeaders();
+          const verify = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...vh, 'Content-Type': 'application/json' }, body: '{}' });
+          if (!verify.ok) throw new Error('Verifica HTTP ' + verify.status);
+          const data = await verify.json();
+          const after = typeof data.settings === 'string' ? JSON.parse(data.settings) : data.settings;
+          const verified = after.main_api === 'openai' && after.oai_settings?.chat_completion_source === 'openrouter' && after.oai_settings?.openrouter_model === 'openrouter/free';
+          checks.openRouterPlan = { before, proposed, applied: verified, backupFile: fileName, localOnly: true };
+          if (!verified) throw new Error('Verifica modello non riuscita');
+        }
+      }
       if (p.discoverModel === true) {
         try {
           const h = await stHeaders();
