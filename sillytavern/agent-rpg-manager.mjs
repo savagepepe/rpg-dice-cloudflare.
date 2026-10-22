@@ -52,7 +52,24 @@ async function execute(job) {
   switch (job.type) {
     case 'health': {
       const r = await fetch(local + '/');
-      return { sillyTavernOnline: r.ok, httpStatus: r.status };
+      if (p.inspect !== true) return { sillyTavernOnline: r.ok, httpStatus: r.status };
+      const checks = {};
+      for (const path of ['/api/settings/get', '/api/worldinfo/list', '/api/characters/all']) {
+        try {
+          const h = await stHeaders();
+          const res = await fetch(local + path, { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+          const txt = await res.text();
+          let keys = [];
+          if (res.ok) {
+            try {
+              const data = JSON.parse(txt);
+              if (data && typeof data === 'object' && !Array.isArray(data)) keys = Object.keys(data).filter(k => !/key|token|secret|password|credential|auth|cookie/i.test(k)).slice(0, 50);
+            } catch {}
+          }
+          checks[path] = { httpStatus: res.status, responseBytes: txt.length, topLevelKeys: keys };
+        } catch (e) { checks[path] = { error: e.message.slice(0, 100) }; }
+      }
+      return { sillyTavernOnline: r.ok, httpStatus: r.status, diagnostics: checks };
     }
     case 'create_character': {
       const name = safeName(p.name, 'name');
@@ -80,7 +97,7 @@ async function execute(job) {
     default: throw new Error('Operazione non autorizzata');
   }
 }
-console.log('RPG Manager avviato (health, create_character, upsert_lorebook)');
+console.log('RPG Manager avviato (diagnostica sicura, personaggi, Lorebook)');
 while (true) {
   try {
     const job = await cloud('/agent/claim', {});
