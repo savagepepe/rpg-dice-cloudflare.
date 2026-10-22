@@ -88,6 +88,48 @@ async function execute(job) {
           } else checks.configuration = { httpStatus: res.status };
         } catch (e) { checks.configuration = { error: e.message.slice(0, 100) }; }
       }
+      if (p.configureGeneration && typeof p.configureGeneration === 'object') {
+        const desired = p.configureGeneration;
+        const permitted = { amount_gen: [100, 1500], max_context: [2048, 32768] };
+        if (Object.keys(desired).length === 0 || Object.keys(desired).some(k => !Object.hasOwn(permitted, k))) throw new Error('Parametri non consentiti');
+        for (const [key, value] of Object.entries(desired)) {
+          const [min,max] = permitted[key];
+          if (!Number.isInteger(value) || value < min || value > max) throw new Error('Valore non valido: ' + key);
+        }
+        const h = await stHeaders();
+        const res = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}' });
+        if (!res.ok) throw new Error('Lettura impostazioni HTTP ' + res.status);
+        const responseData = await res.json();
+        const original = typeof responseData.settings === 'string' ? JSON.parse(responseData.settings) : responseData.settings;
+        if (!original || typeof original !== 'object' || Array.isArray(original)) throw new Error('Formato impostazioni inatteso');
+        const before = {};
+        for (const key of Object.keys(desired)) {
+          if (!Number.isInteger(original[key])) throw new Error('Campo assente: ' + key);
+          before[key] = original[key];
+        }
+        if (p.dryRun !== false) {
+          checks.generationPlan = { before, proposed: desired, applied: false };
+        } else {
+          const backupDir = new URL('../backups/', import.meta.url);
+          fs.mkdirSync(backupDir, { recursive: true, mode: 0o700 });
+          const fileName = 'before-generation-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+          fs.writeFileSync(new URL(fileName, backupDir), JSON.stringify(original), { mode: 0o600, flag: 'wx' });
+          const updated = { ...original, ...desired };
+          const save = await fetch(local + '/api/settings/save', {
+            method: 'POST', headers: { ...h, 'Content-Type': 'application/json' },
+            body: JSON.stringify(updated)
+          });
+          if (!save.ok) throw new Error('Salvataggio HTTP ' + save.status);
+          const checkHeaders = await stHeaders();
+          const verify = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...checkHeaders, 'Content-Type': 'application/json' }, body: '{}' });
+          if (!verify.ok) throw new Error('Verifica HTTP ' + verify.status);
+          const afterResponse = await verify.json();
+          const after = typeof afterResponse.settings === 'string' ? JSON.parse(afterResponse.settings) : afterResponse.settings;
+          const verified = Object.entries(desired).every(([k,v]) => after[k] === v);
+          checks.generationPlan = { before, proposed: desired, applied: verified, backupFile: fileName, localOnly: true };
+          if (!verified) throw new Error('Impostazioni salvate ma verifica non riuscita');
+        }
+      }
       if (p.discoverModel === true) {
         try {
           const h = await stHeaders();
@@ -172,7 +214,7 @@ async function execute(job) {
     default: throw new Error('Operazione non autorizzata');
   }
 }
-console.log('RPG Manager avviato (diagnostica avanzata, backup locale, personaggi, Lorebook)');
+console.log('RPG Manager avviato (configurazione controllata, backup, personaggi, Lorebook)');
 while (true) {
   try {
     const job = await cloud('/agent/claim', {});
