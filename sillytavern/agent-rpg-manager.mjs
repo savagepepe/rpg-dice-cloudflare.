@@ -69,6 +69,25 @@ async function execute(job) {
           checks[path] = { httpStatus: res.status, responseBytes: txt.length, topLevelKeys: keys };
         } catch (e) { checks[path] = { error: e.message.slice(0, 100) }; }
       }
+      if (p.details === true) {
+        try {
+          const h = await stHeaders();
+          const res = await fetch(local + '/api/settings/get', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: '{}' });
+          if (res.ok) {
+            const data = await res.json();
+            const settings = typeof data.settings === 'string' ? JSON.parse(data.settings) : data.settings;
+            const safe = {};
+            const allow = ['main_api', 'max_context', 'amount_gen', 'swipes', 'streaming', 'streaming_enabled', 'auto_save_msg_edits', 'auto_fix_generated_markdown', 'trim_spaces', 'collapse_newlines', 'power_user'];
+            if (settings && typeof settings === 'object') {
+              for (const key of allow) {
+                const value = settings[key];
+                if (typeof value === 'boolean' || typeof value === 'number' || (typeof value === 'string' && value.length < 80)) safe[key] = value;
+              }
+            }
+            checks.configuration = { safeSettings: safe, availableThemes: Array.isArray(data.themes) ? data.themes.length : null, contextPresets: Array.isArray(data.context) ? data.context.length : null, instructPresets: Array.isArray(data.instruct) ? data.instruct.length : null, systemPrompts: Array.isArray(data.sysprompt) ? data.sysprompt.length : null };
+          } else checks.configuration = { httpStatus: res.status };
+        } catch (e) { checks.configuration = { error: e.message.slice(0, 100) }; }
+      }
       return { sillyTavernOnline: r.ok, httpStatus: r.status, diagnostics: checks };
     }
     case 'create_character': {
