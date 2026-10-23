@@ -106,14 +106,13 @@ Puoi aggiungere il nome dell'abilità, per esempio /d6 atletica o /d8 percezione
 
 ⚔️ DANNI SAVAGE WORLDS
 /danno 1d4-1+1d6
-/danno 2d6+2
-Tutti i dadi del danno esplodono automaticamente e si sommano, senza Dado Fortuna. Il simbolo ! è facoltativo.
+/danni 2d6+2
+I comandi /danno e /danni sono equivalenti.\nTutti i dadi del danno esplodono automaticamente e si sommano, senza Dado Fortuna. Il simbolo ! è facoltativo.
 
 🎯 DADI PERSONALIZZATI
 /dadi 1d20+5
 /dadi 2d8!
-/dadi 1d8! 1d6!
-Sintassi: NdF+M oppure NdF-M, dove N è il numero di dadi, F le facce, M il modificatore. Il simbolo ! attiva l'esplosione. Puoi inserire una o due espressioni: la prima è il Dado Tiro, la seconda il Dado Fortuna. Se entrambi mostrano 1 al primo lancio, viene segnalato il fallimento critico.
+/dadi 1d8! 1d6!\n/dado 1d8! 1d6! atletica\n/dadi 1d8! 1d6! tiro per colpire\nI comandi /dadi e /dado sono equivalenti. Puoi aggiungere una descrizione dopo i dadi.\nSintassi: NdF+M oppure NdF-M, dove N è il numero di dadi, F le facce, M il modificatore. Il simbolo ! attiva l'esplosione. Puoi inserire una o due espressioni: la prima è il Dado Tiro, la seconda il Dado Fortuna. Se entrambi mostrano 1 al primo lancio, viene segnalato il fallimento critico.
 
 🃏 PESCA CARTE
 /pesca — pesca una carta e la mostra nel gruppo.
@@ -135,8 +134,19 @@ Crea un unico messaggio con nomi e carte inizialmente nascosti. Premi «Scopri c
     const faces=command.slice(2); const expr=`1d${faces}! 1d6!`;
     return {text:formatRoll(rollExpression(expr,rng),`Macro: d${faces}${args.length?' — '+args.join(' '):''}\n${expr}`),state};
   }
-  if(command==='/danno') return {text:rollDamage(args.join(' '),rng),state};
-  if(command==='/dadi') return {text:args.length?formatRoll(rollExpression(args.join(' '),rng),`Tiro: ${args.join(' ')}`):'Uso: /dadi 1d20+5 1d6!',state};
+  if(command==='/danno'||command==='/danni') return {text:rollDamage(args.join(' '),rng),state};
+  if(command==='/dadi'||command==='/dado') {
+    if(!args.length) return {text:'Uso: /dadi 1d20+5 1d6! atletica',state};
+    const dicePattern=/^(\\d+)?d\\d+([+-]\\d+)?!?$/i;
+    const diceParts=[];
+    while(diceParts.length<2 && args.length>diceParts.length && dicePattern.test(args[diceParts.length])) {
+      diceParts.push(args[diceParts.length]);
+    }
+    if(!diceParts.length) throw Error('Inserisci un dado valido, es. /dadi 1d8! 1d6! atletica.');
+    const description=args.slice(diceParts.length).join(' ');
+    const expr=diceParts.join(' ');
+    return {text:formatRoll(rollExpression(expr,rng),`Tiro: ${expr}${description?' — '+description:''}`),state};
+  }
   if(command==='/pesca' && args.length && /^@[a-zA-Z0-9_]{5,32}$/.test(args[0])) {
     const result=drawCard(state,rng);
     return {...result, recipient:args[0].slice(1).toLowerCase()};
