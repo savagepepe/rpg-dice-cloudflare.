@@ -70,3 +70,19 @@ test('macro supporta descrizioni con più parole',()=>{
  const result=commandResponse('/d8 percezione visiva',freshState(),()=>0);
  assert.match(result.text,/Macro: d8 — percezione visiva/);
 });
+
+test('dadi accetta descrizione e alias dado',()=>{
+ const a=commandResponse('/dadi 1d8! 1d6! tiro per colpire',freshState(),()=>0);
+ const b=commandResponse('/dado 1d8! 1d6! tiro per colpire',freshState(),()=>0);
+ assert.equal(a.text,b.text);
+ assert.match(a.text,/tiro per colpire/);
+});
+test('dadi mantiene due dadi senza descrizione',()=>{
+ const r=commandResponse('/dadi 1d8! 1d6!',freshState(),()=>0);
+ assert.match(r.text,/Dado Fortuna/);
+});
+test('danno e danni sono equivalenti',()=>{
+ const a=commandResponse('/danno 2d6+2',freshState(),()=>0);
+ const b=commandResponse('/danni 2d6+2',freshState(),()=>0);
+ assert.equal(a.text,b.text);
+});
