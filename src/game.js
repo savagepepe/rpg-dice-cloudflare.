@@ -137,7 +137,7 @@ Crea un unico messaggio con nomi e carte inizialmente nascosti. Premi «Scopri c
   if(command==='/danno'||command==='/danni') return {text:rollDamage(args.join(' '),rng),state};
   if(command==='/dadi'||command==='/dado') {
     if(!args.length) return {text:'Uso: /dadi 1d20+5 1d6! atletica',state};
-    const dicePattern=/^(\\d+)?d\\d+([+-]\\d+)?!?$/i;
+    const dicePattern=/^(\d+)?d\d+([+-]\d+)?!?$/i;
     const diceParts=[];
     while(diceParts.length<2 && args.length>diceParts.length && dicePattern.test(args[diceParts.length])) {
       diceParts.push(args[diceParts.length]);

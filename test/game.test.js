@@ -86,3 +86,14 @@ test('danno e danni sono equivalenti',()=>{
  const b=commandResponse('/danni 2d6+2',freshState(),()=>0);
  assert.equal(a.text,b.text);
 });
+
+test('regressione: dadi accetta d6! e 1d6!',()=>{
+ for(const expr of ['d6!','1d6!','2d8+1','1d8! 1d6! atletica']) {
+   const r=commandResponse('/dadi '+expr,freshState(),()=>0);
+   assert.match(r.text,/Dado Tiro/);
+ }
+});
+test('regressione: alias dado con descrizione',()=>{
+ const r=commandResponse('/dado 1d6! atletica',freshState(),()=>0);
+ assert.match(r.text,/atletica/);
+});
