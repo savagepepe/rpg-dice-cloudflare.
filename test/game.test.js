@@ -86,3 +86,29 @@ test('danno e danni sono equivalenti',()=>{
  const b=commandResponse('/danni 2d6+2',freshState(),()=>0);
  assert.equal(a.text,b.text);
 });
+
+test('regressione: dadi accetta d6! e 1d6!',()=>{
+ for(const expr of ['d6!','1d6!','2d8+1','1d8! 1d6! atletica']) {
+   const r=commandResponse('/dadi '+expr,freshState(),()=>0);
+   assert.match(r.text,/Dado Tiro/);
+ }
+});
+test('regressione: alias dado con descrizione',()=>{
+ const r=commandResponse('/dado 1d6! atletica',freshState(),()=>0);
+ assert.match(r.text,/atletica/);
+});
+
+test('dadi supporta modificatori dopo ! e prima di !',()=>{
+ for(const input of ['/dadi 1d8!+2 1d6!+2','/dadi 1d8+2! 1d6+2!','/dado d8!+2 d6!+2 atletica']){
+   const result=commandResponse(input,freshState(),()=>0);
+   assert.match(result.text,/Totale tiro: 3/);
+   assert.match(result.text,/Totale fortuna: 3/);
+ }
+});
+test('rollExpression preserva esplosione con modificatore dopo !',()=>{
+ const r=rollExpression('1d8!+2 1d6!+2',()=>0);
+ assert.equal(r[0].explode,true);
+ assert.equal(r[1].explode,true);
+ assert.equal(r[0].mod,2);
+ assert.equal(r[1].mod,2);
+});
