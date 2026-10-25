@@ -21,9 +21,9 @@ export function rollExpression(expression, rng = Math.random) {
   const parts = expression.trim().split(/\s+/).filter(Boolean);
   if (!parts.length || parts.length>2) throw Error('Inserisci uno o due dadi, es. 1d8! 1d6!.');
   return parts.map(raw => {
-    const match=/^(\d+)?d(\d+)([+-]\d+)?(!)?$/i.exec(raw);
+    const match=/^(\d+)?d(\d+)(?:(\!)?([+-]\d+)|([+-]\d+)(\!)?|\!)?$/i.exec(raw);
     if(!match) throw Error(`Espressione non valida: ${raw}`);
-    const qty=Number(match[1]||1), faces=Number(match[2]), mod=Number(match[3]||0), explode=Boolean(match[4]);
+    const qty=Number(match[1]||1), faces=Number(match[2]), mod=Number(match[4]||match[5]||0), explode=Boolean(match[3]||match[6]||raw.endsWith('!'));
     if(!Number.isSafeInteger(qty)||qty<1||qty>MAX_DICE) throw Error('Quantità di dadi non valida (1–100).');
     if(!Number.isSafeInteger(mod)||Math.abs(mod)>1000000) throw Error('Modificatore troppo grande.');
     const details=Array.from({length:qty},()=>{const rolls=rollDie(faces,explode,rng);return {rolls, subtotal:rolls.reduce((a,b)=>a+b,0)};});
@@ -137,7 +137,7 @@ Crea un unico messaggio con nomi e carte inizialmente nascosti. Premi «Scopri c
   if(command==='/danno'||command==='/danni') return {text:rollDamage(args.join(' '),rng),state};
   if(command==='/dadi'||command==='/dado') {
     if(!args.length) return {text:'Uso: /dadi 1d20+5 1d6! atletica',state};
-    const dicePattern=/^(\d+)?d\d+([+-]\d+)?!?$/i;
+    const dicePattern=/^(\d+)?d\d+(?:!?[+-]\d+!?|!)?$/i;
     const diceParts=[];
     while(diceParts.length<2 && args.length>diceParts.length && dicePattern.test(args[diceParts.length])) {
       diceParts.push(args[diceParts.length]);
